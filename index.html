@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Water Surface PRO — k-eis</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  /* Asagiri（朝霧）：既定。淡い青灰×深い水色 */
+  --bg:#eef1f0; --ink:#1f2a2e; --line:#d3dcdb; --line-strong:#aebdbd;
+  --accent:#4f7f8f; --on-accent:#f4f8f8; --muted:#6c7c80;
+  --check-a:#e3e9e8; --check-b:#eef1f0;
+  --mono:'Courier New',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+}
+/* Fukami（深み） */
+body.theme-fukami {
+  --bg:#0f1a1f; --ink:#dfe8e8; --line:#22343b; --line-strong:#35505a;
+  --accent:#6fb0c4; --on-accent:#0b1418; --muted:#8aa0a6;
+  --check-a:#14232a; --check-b:#0f1a1f;
+}
+html,body { background:var(--bg); color:var(--ink); font-family:var(--sans); min-height:100vh; transition:background .2s,color .2s; }
+.wrap { max-width:1180px; margin:0 auto; padding:40px 32px 80px; }
+header { border-bottom:1px solid var(--line-strong); padding-bottom:22px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:flex-end; }
+.filter-tag { font:600 10px/1 var(--mono); color:var(--accent); letter-spacing:.16em; margin-bottom:10px; }
+h1 { font:300 32px/1.1 var(--sans); letter-spacing:-.01em; }
+h1 .jp { font-size:15px; color:var(--muted); font-weight:400; margin-left:10px; }
+.tagline { font:400 12px/1.6 var(--sans); color:var(--muted); margin-top:6px; }
+.version { font:400 9px/1 var(--mono); color:var(--muted); letter-spacing:.1em; text-align:right; }
+.theme-switcher { display:flex; align-items:center; gap:16px; margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+.theme-label { font:500 9px/1 var(--mono); color:var(--muted); letter-spacing:.1em; }
+.theme-options { display:flex; gap:6px; }
+.theme-btn { display:flex; align-items:center; gap:6px; padding:6px 10px 6px 6px; border:1px solid var(--line-strong); background:transparent; color:var(--ink); font:500 9.5px/1 var(--sans); cursor:pointer; }
+.theme-btn:hover { border-color:var(--accent); }
+.theme-btn.active { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+.swatch { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+.stage { display:grid; grid-template-columns:1fr 300px; border:1px solid var(--line-strong); }
+.canvas-area {
+  position:sticky; top:20px; align-self:start; min-height:480px; padding:20px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+  background:linear-gradient(45deg,var(--check-a) 25%,transparent 25%),linear-gradient(-45deg,var(--check-a) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,var(--check-a) 75%),linear-gradient(-45deg,transparent 75%,var(--check-a) 75%);
+  background-color:var(--check-b); background-size:16px 16px; background-position:0 0,0 8px,8px -8px,-8px 0;
+  border-right:1px solid var(--line-strong);
+}
+canvas#outputCanvas { max-width:100%; max-height:560px; display:block; }
+.hint { font:400 9px/1.6 var(--mono); color:var(--muted); text-align:center; letter-spacing:.06em; }
+.dual-drop { display:flex; gap:10px; width:100%; max-width:420px; }
+.mini-drop { flex:1; aspect-ratio:1.4; border:1.5px dashed var(--line-strong); cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center; background-size:cover; background-position:center; position:relative; max-height:120px; }
+.mini-drop.filled { border-style:solid; }
+.mini-label { font:500 10px/1.4 var(--sans); color:var(--muted); padding:6px; }
+.mini-drop.filled .mini-label { position:absolute; bottom:4px; left:4px; right:4px; color:#f0f4f4; background:rgba(0,0,0,.5); padding:2px 4px; font-size:9px; }
+.mini-drop input { display:none; }
+.controls { background:var(--bg); padding:22px 20px; }
+.ctrl-group { padding:16px 0; border-bottom:1px solid var(--line); }
+.ctrl-group:first-child { padding-top:0; }
+.ctrl-label { display:flex; justify-content:space-between; align-items:baseline; margin:10px 0 8px; }
+.ctrl-label:first-child { margin-top:0; }
+.ctrl-label .name { font:500 10px/1 var(--sans); }
+.ctrl-label .jp-small { font-size:9px; color:var(--muted); margin-left:4px; }
+.ctrl-label .val { font:500 10px/1 var(--mono); color:var(--accent); }
+.section-title { font:600 9px/1 var(--mono); color:var(--muted); letter-spacing:.08em; }
+input[type=range] { -webkit-appearance:none; width:100%; height:3px; background:var(--line-strong); outline:none; cursor:pointer; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--accent); }
+input[type=range]::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--accent); border:none; }
+.check { display:flex; align-items:center; gap:8px; cursor:pointer; font:500 10px/1.3 var(--sans); }
+.check input { width:16px; height:16px; accent-color:var(--accent); }
+.action-buttons { display:flex; gap:8px; }
+.btn { flex:1; padding:12px; border:1px solid var(--accent); background:var(--accent); color:var(--on-accent); font:600 11px/1 var(--sans); letter-spacing:.04em; cursor:pointer; }
+.btn:disabled { opacity:.3; cursor:not-allowed; }
+.btn.secondary { background:transparent; color:var(--ink); border-color:var(--line-strong); }
+.footer-links { display:flex; flex-direction:column; gap:12px; margin-top:16px; }
+.footer-links a { display:block; text-align:center; padding:16px; border:1px solid var(--line-strong); font:600 12px/1 var(--sans); letter-spacing:.06em; color:var(--ink); text-decoration:none; }
+#saveOverlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:100; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; }
+#saveOverlay img { max-width:92%; max-height:70%; margin-bottom:16px; }
+#saveOverlay p { font-size:13px; color:#ddd; }
+#saveOverlay .closeBtn { margin-top:20px; font-size:12px; color:#aaa; border:1px solid #666; padding:8px 16px; cursor:pointer; }
+@media (max-width:860px) {
+  .wrap { padding:20px 16px 50px; }
+  header { flex-direction:column; align-items:flex-start; gap:10px; padding-bottom:16px; margin-bottom:20px; }
+  h1 { font-size:24px; } h1 .jp { display:block; margin:4px 0 0; }
+  .stage { grid-template-columns:1fr; border:none; }
+  .canvas-area { border:1px solid var(--line-strong); border-bottom:none; min-height:220px; top:0; z-index:20; }
+  canvas#outputCanvas { max-height:42vh; }
+  .controls { border:1px solid var(--line-strong); border-top:none; padding:18px 16px; }
+  input[type=range] { height:4px; margin:8px 0; }
+  input[type=range]::-webkit-slider-thumb { width:22px; height:22px; }
+  input[type=range]::-moz-range-thumb { width:22px; height:22px; }
+  .btn { padding:16px; font-size:12px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="filter-tag">k-eis DESIGN FILTER 008</div>
+      <h1>Water Surface <span class="jp">水面 PRO</span></h1>
+      <div class="tagline">One angle of light. A mirror, a window, a color.</div>
+      <div class="tagline" style="margin-top:2px;opacity:.85;">一つの光が、鏡にも、窓にも、色にもなる。</div>
+    </div>
+    <div class="version">© 2026 k-eis studio</div>
+  </header>
+
+  <div class="theme-switcher">
+    <span class="theme-label">THEME <span style="font-family:var(--sans)">着せ替え</span></span>
+    <div class="theme-options">
+      <button class="theme-btn active" data-theme="asagiri"><span class="swatch" style="background:#eef1f0;border:1px solid #4f7f8f;"></span>Asagiri</button>
+      <button class="theme-btn" data-theme="fukami"><span class="swatch" style="background:#0f1a1f;border:1px solid #6fb0c4;"></span>Fukami</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="canvas-area">
+      <div class="dual-drop">
+        <div class="mini-drop" id="dropSurf"><span class="mini-label">水面の写真<br>映り込む景色</span><input type="file" id="fileSurf" accept="image/*"></div>
+        <div class="mini-drop" id="dropBelow"><span class="mini-label">水底の写真<br>透けて見える景色</span><input type="file" id="fileBelow" accept="image/*"></div>
+      </div>
+      <canvas id="outputCanvas" width="900" height="600"></canvas>
+      <div class="hint" id="canvasHint">水面の写真は水平線より上に、水底の写真は水の中に使われます（片方だけでも動きます）</div>
+    </div>
+
+    <div class="controls">
+      <div class="ctrl-group">
+        <div class="ctrl-label"><span class="section-title">WAVE STRUCTURE <span class="jp-small" style="font-family:var(--sans)">波の構造</span></span></div>
+
+        <div class="ctrl-label"><span class="name">WAVE SCALE <span class="jp-small">うねりの大きさ</span></span><span class="val" id="waveScaleVal">50</span></div>
+        <input type="range" id="waveScale" min="0" max="100" value="50">
+
+        <div class="ctrl-label"><span class="name">RIPPLE TEXTURE <span class="jp-small">さざ波の細かさ</span></span><span class="val" id="rippleVal">40</span></div>
+        <input type="range" id="ripple" min="0" max="100" value="40">
+
+        <div class="ctrl-label"><span class="name">WAVE DIRECTION <span class="jp-small">波の方向</span></span><span class="val" id="waveDirVal">0°</span></div>
+        <input type="range" id="waveDir" min="0" max="359" value="0">
+
+        <div class="ctrl-label"><span class="name">WAVE AMPLITUDE <span class="jp-small">波の高さ</span></span><span class="val" id="waveAmpVal">50</span></div>
+        <input type="range" id="waveAmp" min="0" max="100" value="50">
+        <div class="ctrl-label"><span class="name">WAVE SPEED <span class="jp-small">流れの速さ</span></span><span class="val" id="waveSpeedVal">0</span></div>
+        <input type="range" id="waveSpeed" min="0" max="100" value="0">
+        <div class="ctrl-label"><span class="name">WHITECAPS <span class="jp-small">白波</span></span><span class="val" id="whiteVal">0</span></div>
+        <input type="range" id="white" min="0" max="100" value="0">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label"><span class="section-title">REFLECTION <span class="jp-small" style="font-family:var(--sans)">水平線</span></span></div>
+        <div class="ctrl-label"><span class="name">HORIZON <span class="jp-small">水平線の位置</span></span><span class="val" id="horizonVal">35</span></div>
+        <input type="range" id="horizon" min="15" max="85" value="35">
+        <div class="ctrl-label"><span class="name">REFLECTION BALANCE <span class="jp-small">反射の強さ</span></span><span class="val" id="balVal">50</span></div>
+        <input type="range" id="bal" min="0" max="100" value="50">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label"><span class="section-title">LIGHT <span class="jp-small" style="font-family:var(--sans)">光</span></span></div>
+        <div class="ctrl-label"><span class="name">LIGHT DIRECTION <span class="jp-small">光の方向</span></span><span class="val" id="lightDirVal">0</span></div>
+        <input type="range" id="lightDir" min="0" max="359" value="0">
+        <div class="ctrl-label"><span class="name">GLINT <span class="jp-small">きらめき</span></span><span class="val" id="glintVal">50</span></div>
+        <input type="range" id="glint" min="0" max="100" value="50">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label"><span class="section-title">OPTICS <span class="jp-small" style="font-family:var(--sans)">光学</span></span></div>
+        <div class="ctrl-label"><span class="name">CAUSTIC WEAVE <span class="jp-small">光の網</span></span><span class="val" id="causVal">40</span></div>
+        <input type="range" id="caus" min="0" max="100" value="40">
+        <div class="ctrl-label"><span class="name">DISTORTION <span class="jp-small">歪み</span></span><span class="val" id="distVal">50</span></div>
+        <input type="range" id="dist" min="0" max="100" value="50">
+        <div class="ctrl-label"><span class="name">CHROMATIC FRINGE <span class="jp-small">色の分散</span></span><span class="val" id="chromaVal">15</span></div>
+        <input type="range" id="chroma" min="0" max="100" value="15">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label"><span class="section-title">WATER <span class="jp-small" style="font-family:var(--sans)">水</span></span></div>
+        <div class="ctrl-label"><span class="name">DEPTH <span class="jp-small">水深</span></span><span class="val" id="depthVal">30</span></div>
+        <input type="range" id="depth" min="0" max="100" value="30">
+        <div class="ctrl-label"><span class="name">WATER TINT <span class="jp-small">水の色味</span></span><span class="val" id="tintVal">15</span></div>
+        <input type="range" id="tint" min="0" max="100" value="15">
+        <div class="ctrl-label"><span class="name">TURBIDITY <span class="jp-small">濁り</span></span><span class="val" id="turbidityVal">20</span></div>
+        <input type="range" id="turbidity" min="0" max="100" value="20">
+      </div>
+
+      <div class="ctrl-group">
+        <div class="action-buttons" style="margin-bottom:14px;"><button class="btn secondary" id="shuffleBtn" type="button">SHUFFLE 波の組み直し</button></div>
+        <label class="check" style="margin-bottom:12px;"><input type="checkbox" id="compare">COMPARE MODE <span class="jp-small" style="color:var(--muted);font-size:9px;">元の写真と交互に表示</span></label>
+        <label class="check"><input type="checkbox" id="showHeight">SHOW HEIGHT MAP <span class="jp-small" style="color:var(--muted);font-size:9px;">波の高さを白黒で表示</span></label>
+      </div>
+
+      <div class="ctrl-group" style="border-bottom:none;">
+        <div class="action-buttons">
+          <button class="btn" id="downloadBtn" disabled>SAVE AS PNG</button>
+          <button class="btn secondary" id="resetBtn">RESET</button>
+        </div>
+        <div class="footer-links">
+          <a href="https://keis01.substack.com/p/k-eis-design-filter-000?r=87bvw8&utm_medium=ios" target="_blank" rel="noopener">PHILOSOPHY &bull; USAGE &bull; LICENSE</a>
+          <a href="https://keis01.substack.com/s/k-eis-design-filter" target="_blank" rel="noopener">ALL FILTERS</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="saveOverlay">
+  <img id="saveOverlayImg" alt="">
+  <p>長押しして「写真に保存」を選んでください</p>
+  <div class="closeBtn" id="saveOverlayClose">閉じる</div>
+</div>
+
+<script src="water-surface-pro.js"></script>
+</body>
+</html>
