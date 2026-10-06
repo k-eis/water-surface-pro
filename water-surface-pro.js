@@ -55,7 +55,7 @@ void main(){
   float caus=pow(clamp(lap*5.,0.,1.),2.);                                 // 光の網（水面の凹み）
   c+=caus*uCaus*vec3(.8,.95,1.)*.7*(1.-uDepth*.5);
   float u=uTurb*.8;c=mix(c,tc*.55+.5,u);
-  if(uHasS>.5)c=mix(c,tex(uS,g*disp+vec2(0.,2.*(hy-P.y)),0.,uChroma),R);
+  if(uHasS>.5)c=mix(c,tex(uS,g*disp+vec2(0.,2.*(hy+clamp(1.-hy/(.15*uRes.y),0.,1.)*(.5*uRes.y-hy)-P.y)),0.,uChroma),R);
   vec2 n=-g*sk;float lr=(uLight*360.-90.)*.0174533;
   vec3 H=normalize(vec3(cos(lr)*.82,sin(lr)*.82,1.57));
   float dt=dot(normalize(vec3(n,1.)),H);
