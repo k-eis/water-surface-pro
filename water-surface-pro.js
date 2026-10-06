@@ -8,7 +8,7 @@ const DEFAULTS = { waveScale: 50, ripple: 40, waveDir: 0, waveAmp: 50, waveSpeed
 const IDS = Object.keys(DEFAULTS), UNIT = { waveDir: '°', lightDir: '°' };
 
 // THEME
-const THEME_CLASS_MAP = { asagiri: null, fukami: 'theme-fukami' };
+const THEME_CLASS_MAP = { shinkai: 'theme-shinkai', yugure: 'theme-yugure' };
 function applyTheme(key) {
   if (!(key in THEME_CLASS_MAP)) return;
   Object.values(THEME_CLASS_MAP).forEach((c) => c && document.body.classList.remove(c));
@@ -17,6 +17,7 @@ function applyTheme(key) {
   try { localStorage.setItem('watersurface-theme', key); } catch (e) {}
 }
 document.querySelectorAll('.theme-btn').forEach((b) => b.addEventListener('click', () => applyTheme(b.dataset.theme)));
+applyTheme('shinkai');
 try { const t = localStorage.getItem('watersurface-theme'); if (t) applyTheme(t); } catch (e) {}
 
 // ── シェーダー
