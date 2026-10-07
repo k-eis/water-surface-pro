@@ -4,7 +4,7 @@ const $ = (id) => document.getElementById(id);
 const cv = $('outputCanvas');
 const gl = cv.getContext('webgl', { preserveDrawingBuffer: true, antialias: false });
 const downloadBtn = $('downloadBtn');
-const DEFAULTS = { waveScale: 50, ripple: 40, waveDir: 0, waveAmp: 50, waveSpeed: 0, white: 0, whiteDir: 0, horizon: 35, bal: 50, lightDir: 0, glint: 50, caus: 40, dist: 50, chroma: 15, depth: 30, tint: 15, turbidity: 20 };
+const DEFAULTS = { waveScale: 90, ripple: 5, waveDir: 104, waveAmp: 35, waveSpeed: 60, white: 26, whiteDir: 284, horizon: 25, bal: 74, lightDir: 293, glint: 10, caus: 60, dist: 80, chroma: 5, depth: 5, tint: 5, turbidity: 60 };
 const IDS = Object.keys(DEFAULTS), UNIT = { waveDir: '°', lightDir: '°', whiteDir: '°' };
 
 // THEME
@@ -176,8 +176,8 @@ $('resetBtn').addEventListener('click', () => {
   $('showHeight').checked = false; $('compare').checked = false; clearInterval(cmpTimer); rawFlag = 0;
   photos.below = photos.surf = null; tAcc = 0; seed = 0; rip = [0, 0, -99];
   ['dropSurf', 'dropBelow'].forEach((id) => { $(id).classList.remove('filled'); $(id).style.backgroundImage = ''; });
-  $('fileSurf').value = ''; $('fileBelow').value = ''; downloadBtn.disabled = true; setupTextures(); render();
+  $('fileSurf').value = ''; $('fileBelow').value = ''; downloadBtn.disabled = true; setupTextures(); render(); kick();
 });
 
 if (!gl) document.getElementById('canvasHint').textContent = 'このブラウザはWebGLに対応していません（無料版をお使いください）';
-else { setupTextures(); render(); }
+else { setupTextures(); render(); kick(); }   // WAVE SPEED が初期値で動くので、開いた時から波が流れる
