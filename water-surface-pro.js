@@ -4,8 +4,16 @@ const $ = (id) => document.getElementById(id);
 const cv = $('outputCanvas');
 const gl = cv.getContext('webgl', { preserveDrawingBuffer: true, antialias: false });
 const downloadBtn = $('downloadBtn');
-const DEFAULTS = { waveScale: 90, ripple: 5, waveDir: 104, waveAmp: 35, waveSpeed: 60, white: 26, whiteDir: 284, horizon: 25, bal: 74, lightDir: 293, glint: 10, caus: 60, dist: 80, chroma: 5, depth: 5, tint: 5, turbidity: 60 };
+const DEFAULTS = { waveScale: 90, ripple: 5, waveDir: 104, waveAmp: 35, waveSpeed: 60, white: 26, whiteDir: 284, horizon: 25, bal: 74, lightDir: 293, glint: 10, caus: 60, dist: 80, chroma: 5, depth: 5, tint: 5, turbidity: 60, timeOfDay: 70, timeFlow: 0, timeInt: 55, glow: 45, haze: 30, mood: 35, vig: 25 };
 const IDS = Object.keys(DEFAULTS), UNIT = { waveDir: '°', lightDir: '°', whiteDir: '°' };
+
+// ── 時間帯の光：夜明け(0)→朝→昼(50)→夕方→夕暮れ(100)。太陽の高さ・光の色・水平線のにじみ・全体の色味と明るさを一緒に動かす
+const TK = [[0, 8, [1, .78, .72], [1, .70, .62], [1.02, .95, 1.00], .95], [.25, 28, [1, .94, .84], [.95, .88, .78], [1.00, .98, .94], 1.0], [.5, 62, [1, 1, 1], [.80, .90, 1], [.98, 1.00, 1.03], 1.05], [.75, 14, [1, .72, .42], [1, .62, .30], [1.08, .94, .80], .95], [1, 3, [.95, .50, .60], [.85, .40, .55], [1.00, .84, .92], .82]];
+function timeParams(t, k) {   // t:0〜1（時間帯）、k:0〜1（TIME INTENSITY＝どれだけ効かせるか）
+  t = Math.min(1, Math.max(0, t)); const i = Math.min(3, Math.floor(t * 4)), f = t * 4 - i, a = TK[i], b = TK[i + 1];
+  const m = (x, y) => x + (y - x) * f, v = (x, y) => x.map((q, j) => m(q, y[j])), mix = (n, x) => n + (x - n) * k;
+  return { elev: mix(35, m(a[1], b[1])), light: v(a[2], b[2]).map((q) => mix(1, q)), glow: v(a[3], b[3]).map((q) => mix(.9, q)), tint: v(a[4], b[4]).map((q) => mix(1, q)), expo: mix(1, m(a[5], b[5])) };
+}
 
 // THEME
 const THEME_CLASS_MAP = { shinkai: 'theme-shinkai', yugure: 'theme-yugure' };
@@ -26,6 +34,8 @@ const FS = `precision highp float;
 uniform vec2 uRes; uniform vec4 uW[11]; uniform float uT,uHmax,uHasB,uHasS,uRaw,uShow;
 uniform sampler2D uB,uS;
 uniform float uAmp,uHor,uLight,uDepth,uTint,uTurb,uBal,uGlint,uCaus,uDist,uChroma,uWhite,uWDir;
+uniform float uElev,uExpo,uGlow,uHaze,uMood,uVig; uniform vec3 uLightC,uGlowC,uTintC;
+float HY;
 uniform vec3 uRip; uniform float uRipT;
 vec2 P;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -36,12 +46,23 @@ vec3 tex(sampler2D t,vec2 off,float rad,float ch){   // 6点ぼかし＋チャ�
   for(int i=0;i<6;i++){float a=float(i)*1.0472;vec2 o=vec2(cos(a),sin(a))*rad;
     c.r+=texture2D(t,(P+off*(1.+ch)+o)/uRes).r; c.g+=texture2D(t,(P+off+o)/uRes).g; c.b+=texture2D(t,(P+off*(1.-ch)+o)/uRes).b;}
   return c/6.;}
+vec3 post(vec3 c){   // 仕上げ：水平線の霞→光のにじみ→時間帯の色味→MOOD→VIGNETTE
+  float band=exp(-abs(P.y-HY)/uRes.y*5.5);
+  c=mix(c,uGlowC*.95+.05,uHaze*band*.55);
+  float lum=dot(c,vec3(.3,.59,.11));
+  c+=uGlowC*(uGlow*band*.22+uGlow*max(0.,lum-.72)*.55);
+  c*=uTintC*uExpo;
+  float sh=(1.-lum)*uMood,hi=lum*uMood;
+  c=(c-.45)*(1.+.5*uMood)+.45;
+  c=c*vec3(1.-.28*sh,1.-.08*sh,1.+.10*sh)+uLightC*vec3(.11,.08,.04)*hi;
+  float v=clamp((length((P/uRes-.5)*2.)-.55)/.9,0.,1.);
+  return max(c*(1.-uVig*.7*v*v),0.);}
 void main(){
   P=vec2(gl_FragCoord.x,uRes.y-gl_FragCoord.y);
-  float hy=uHor*uRes.y;
+  float hy=uHor*uRes.y; HY=hy;
   if(uRaw>.5){gl_FragColor=vec4(uHasB>.5?texture2D(uB,P/uRes).rgb:texture2D(uS,P/uRes).rgb,1.);return;}
   if(P.y<hy){float k=P.y/max(1.,hy);vec3 sky=uHasS>.5?texture2D(uS,P/uRes).rgb:vec3(.80+.1*k,.88+.05*k,.91+.03*k);
-    gl_FragColor=vec4(uShow>.5?vec3(.08):sky,1.);return;}
+    gl_FragColor=vec4(post(uShow>.5?vec3(.08):sky),1.);return;}
   float h=0.,lap=0.;vec2 g=vec2(0.);
   for(int i=0;i<11;i++){vec4 w=uW[i];float k=length(w.xy);float t=dot(w.xy,P)+w.w-12.*sqrt(k)*uT;
     h+=w.z*sin(t);g+=w.z*cos(t)*w.xy;lap-=w.z*k*k*sin(t);}
@@ -60,15 +81,15 @@ void main(){
   float u=uTurb*.8;c=mix(c,tc*.55+.5,u);
   if(uHasS>.5)c=mix(c,tex(uS,g*disp+vec2(0.,2.*(hy+clamp(1.-hy/(.15*uRes.y),0.,1.)*(.5*uRes.y-hy)-P.y)),0.,uChroma),R);
   vec2 n=-g*sk;float lr=(uLight*360.-90.)*.0174533;
-  vec3 H=normalize(vec3(cos(lr)*.82,sin(lr)*.82,1.57));
+  vec3 H=normalize(vec3(cos(lr)*cos(uElev),sin(lr)*cos(uElev),1.+sin(uElev)));
   float dt=dot(normalize(vec3(n,1.)),H);
-  c+=pow(max(dt,0.),90.)*(.35+R*.9)*uGlint*1.6*(1.-u*.5)*vec3(1.,.96,.88);     // きらめき
+  c+=pow(max(dt,0.),90.)*(.35+R*.9)*uGlint*1.6*(1.-u*.5)*uLightC*clamp(1.-(uElev*57.2958-35.)/40.,.33,1.);     // きらめき
   vec2 wd=vec2(cos(uWDir),sin(uWDir)); vec2 q=vec2(dot(P,wd),dot(P,vec2(-wd.y,wd.x)))-vec2(uT*300.,0.);   // 白波：選んだ向きに伸びた泡の筋が、その向きへ流れる
   float st=vn(vec2(q.x*.016,q.y*.26))*.6+vn(vec2(q.x*.040+7.,q.y*.62))*.4;
   float thr=.84-.34*uWhite, crest=smoothstep(.04,.34,h/uHmax+.12);
   float foam=smoothstep(0.,.06,uWhite)*crest*smoothstep(thr,thr+.26,st)*(.45+.55*uAmp);
   c=mix(c,vec3(.96,.98,1.),clamp(foam,0.,1.)*.72);
-  gl_FragColor=vec4(c,1.);}`;
+  gl_FragColor=vec4(post(c),1.);}`;
 function mk(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s)); return s; }
 const prog = gl.createProgram();
 gl.attachShader(prog, mk(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, mk(gl.FRAGMENT_SHADER, FS));
@@ -124,6 +145,9 @@ function render() {
   f1('uAmp', p.waveAmp / 100); f1('uHor', p.horizon / 100); f1('uLight', p.lightDir / 360); f1('uDepth', p.depth / 100);
   f1('uTint', p.tint / 100); f1('uTurb', p.turbidity / 100); f1('uBal', p.bal / 100); f1('uGlint', p.glint / 100);
   f1('uCaus', p.caus / 100); f1('uDist', p.dist / 100); f1('uChroma', p.chroma / 100 * .35); f1('uWhite', p.white / 100); f1('uWDir', (p.whiteDir - 90) * Math.PI / 180);
+  const TP = timeParams((flow() > 0 ? tFloat : p.timeOfDay) / 100, p.timeInt / 100);
+  f1('uElev', TP.elev * Math.PI / 180); f1('uExpo', TP.expo); f1('uGlow', p.glow / 100); f1('uHaze', p.haze / 100); f1('uMood', p.mood / 100); f1('uVig', p.vig / 100);
+  gl.uniform3f(loc('uLightC'), ...TP.light); gl.uniform3f(loc('uGlowC'), ...TP.glow); gl.uniform3f(loc('uTintC'), ...TP.tint);
   gl.uniform3f(loc('uRip'), rip[0], rip[1], rip[2]); f1('uRipT', performance.now() / 1000);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
@@ -131,11 +155,17 @@ function render() {
 // ── 再描画ループ（動く要素がある間だけ回す）
 let anim = 0, lastT = 0, cmpTimer = 0;
 const speed = () => +$('waveSpeed').value;
-function busy() { return speed() > 0 || performance.now() / 1000 - rip[2] < 4; }
-function loop(now) { tAcc += Math.min(.05, (now - lastT) / 1000) * speed() / 100; lastT = now; render(); anim = busy() ? requestAnimationFrame(loop) : 0; }
+let tFloat = 70, tDir = 1;   // TIME FLOW：時間帯が行ったり来たりしながら自動で巡る（スライダーを触れば、その位置から続く）
+const flow = () => +$('timeFlow').value;
+function busy() { return speed() > 0 || flow() > 0 || performance.now() / 1000 - rip[2] < 4; }
+function loop(now) {
+  const dt = Math.min(.05, (now - lastT) / 1000); tAcc += dt * speed() / 100; lastT = now;
+  if (flow() > 0) { tFloat += tDir * dt * flow() / 100 * 5; if (tFloat > 100) { tFloat = 100; tDir = -1; } if (tFloat < 0) { tFloat = 0; tDir = 1; } $('timeOfDay').value = Math.round(tFloat); $('timeOfDayVal').textContent = Math.round(tFloat); }
+  render(); anim = busy() ? requestAnimationFrame(loop) : 0;
+}
 function kick() { if (anim) return; lastT = performance.now(); anim = requestAnimationFrame(loop); }
 
-IDS.forEach((id) => $(id).addEventListener('input', () => { $(id + 'Val').textContent = $(id).value + (UNIT[id] || ''); kick(); }));
+IDS.forEach((id) => $(id).addEventListener('input', () => { $(id + 'Val').textContent = $(id).value + (UNIT[id] || ''); if (id === 'timeOfDay') tFloat = +$(id).value; kick(); }));
 $('showHeight').addEventListener('change', kick);
 $('shuffleBtn').addEventListener('click', () => { seed++; kick(); });
 $('compare').addEventListener('change', (e) => {                      // 元の写真と1.5秒ごとに交互表示
@@ -174,7 +204,7 @@ $('saveOverlayClose').addEventListener('click', () => { $('saveOverlay').style.d
 $('resetBtn').addEventListener('click', () => {
   IDS.forEach((id) => { $(id).value = DEFAULTS[id]; $(id + 'Val').textContent = DEFAULTS[id] + (UNIT[id] || ''); });
   $('showHeight').checked = false; $('compare').checked = false; clearInterval(cmpTimer); rawFlag = 0;
-  photos.below = photos.surf = null; tAcc = 0; seed = 0; rip = [0, 0, -99];
+  photos.below = photos.surf = null; tAcc = 0; seed = 0; rip = [0, 0, -99]; tFloat = DEFAULTS.timeOfDay; tDir = 1;
   ['dropSurf', 'dropBelow'].forEach((id) => { $(id).classList.remove('filled'); $(id).style.backgroundImage = ''; });
   $('fileSurf').value = ''; $('fileBelow').value = ''; downloadBtn.disabled = true; setupTextures(); render(); kick();
 });

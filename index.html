@@ -192,6 +192,26 @@ body.theme-yugure { --bg:#150f27; --ink:#f1e6ee; --line:#3a2c5a; --line-strong:#
         <input type="range" id="chroma" min="0" max="100" value="5">
       </div>
       <div class="ctrl-group">
+        <div class="ctrl-label"><span class="section-title">TIME <span class="jp-small" style="font-family:var(--sans)">時間帯</span></span></div>
+        <div class="ctrl-label"><span class="name">TIME OF DAY <span class="jp-small">夜明け←→夕暮れ（手動）</span></span><span class="val" id="timeOfDayVal">70</span></div>
+        <input type="range" id="timeOfDay" min="0" max="100" value="70">
+        <div class="ctrl-label"><span class="name">TIME FLOW <span class="jp-small">時間が自動で巡る速さ</span></span><span class="val" id="timeFlowVal">0</span></div>
+        <input type="range" id="timeFlow" min="0" max="100" value="0">
+        <div class="ctrl-label"><span class="name">TIME INTENSITY <span class="jp-small">時間帯の効き具合</span></span><span class="val" id="timeIntVal">55</span></div>
+        <input type="range" id="timeInt" min="0" max="100" value="55">
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label"><span class="section-title">MOOD <span class="jp-small" style="font-family:var(--sans)">雰囲気</span></span></div>
+        <div class="ctrl-label"><span class="name">GLOW <span class="jp-small">光のにじみ</span></span><span class="val" id="glowVal">45</span></div>
+        <input type="range" id="glow" min="0" max="100" value="45">
+        <div class="ctrl-label"><span class="name">HAZE <span class="jp-small">水平線の霞</span></span><span class="val" id="hazeVal">30</span></div>
+        <input type="range" id="haze" min="0" max="100" value="30">
+        <div class="ctrl-label"><span class="name">MOOD <span class="jp-small">影と光の色のコントラスト</span></span><span class="val" id="moodVal">35</span></div>
+        <input type="range" id="mood" min="0" max="100" value="35">
+        <div class="ctrl-label"><span class="name">VIGNETTE <span class="jp-small">周辺を落とす</span></span><span class="val" id="vigVal">25</span></div>
+        <input type="range" id="vig" min="0" max="100" value="25">
+      </div>
+      <div class="ctrl-group">
         <div class="ctrl-label"><span class="section-title">WATER <span class="jp-small" style="font-family:var(--sans)">水</span></span></div>
         <div class="ctrl-label"><span class="name">DEPTH <span class="jp-small">水深</span></span><span class="val" id="depthVal">5</span></div>
         <input type="range" id="depth" min="0" max="100" value="5">
