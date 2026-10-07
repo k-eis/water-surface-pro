@@ -4,8 +4,8 @@ const $ = (id) => document.getElementById(id);
 const cv = $('outputCanvas');
 const gl = cv.getContext('webgl', { preserveDrawingBuffer: true, antialias: false });
 const downloadBtn = $('downloadBtn');
-const DEFAULTS = { waveScale: 50, ripple: 40, waveDir: 0, waveAmp: 50, waveSpeed: 0, white: 0, horizon: 35, bal: 50, lightDir: 0, glint: 50, caus: 40, dist: 50, chroma: 15, depth: 30, tint: 15, turbidity: 20 };
-const IDS = Object.keys(DEFAULTS), UNIT = { waveDir: '°', lightDir: '°' };
+const DEFAULTS = { waveScale: 50, ripple: 40, waveDir: 0, waveAmp: 50, waveSpeed: 0, white: 0, whiteDir: 0, horizon: 35, bal: 50, lightDir: 0, glint: 50, caus: 40, dist: 50, chroma: 15, depth: 30, tint: 15, turbidity: 20 };
+const IDS = Object.keys(DEFAULTS), UNIT = { waveDir: '°', lightDir: '°', whiteDir: '°' };
 
 // THEME
 const THEME_CLASS_MAP = { shinkai: 'theme-shinkai', yugure: 'theme-yugure' };
@@ -25,9 +25,11 @@ const VS = 'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
 const FS = `precision highp float;
 uniform vec2 uRes; uniform vec4 uW[11]; uniform float uT,uHmax,uHasB,uHasS,uRaw,uShow;
 uniform sampler2D uB,uS;
-uniform float uAmp,uHor,uLight,uDepth,uTint,uTurb,uBal,uGlint,uCaus,uDist,uChroma,uWhite;
+uniform float uAmp,uHor,uLight,uDepth,uTint,uTurb,uBal,uGlint,uCaus,uDist,uChroma,uWhite,uWDir;
 uniform vec3 uRip; uniform float uRipT;
 vec2 P;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x),f.y);}
 vec3 hsl(float h,float s,float l){vec3 k=mod(vec3(0.,8.,4.)+h/30.,12.);float a=s*min(l,1.-l);return l-a*max(vec3(-1.),min(min(k-3.,9.-k),vec3(1.)));}
 vec3 tex(sampler2D t,vec2 off,float rad,float ch){   // 6点ぼかし＋チャンネルごとのずれ（色収差）
   vec3 c=vec3(0.);
@@ -61,7 +63,11 @@ void main(){
   vec3 H=normalize(vec3(cos(lr)*.82,sin(lr)*.82,1.57));
   float dt=dot(normalize(vec3(n,1.)),H);
   c+=pow(max(dt,0.),90.)*(.35+R*.9)*uGlint*1.6*(1.-u*.5)*vec3(1.,.96,.88);     // きらめき
-  c=mix(c,vec3(.95),uWhite*smoothstep(.22,.45,h/uHmax)*.6);                    // 白波
+  vec2 wd=vec2(cos(uWDir),sin(uWDir)); vec2 q=vec2(dot(P,wd),dot(P,vec2(-wd.y,wd.x)))-vec2(uT*300.,0.);   // 白波：選んだ向きに伸びた泡の筋が、その向きへ流れる
+  float st=vn(vec2(q.x*.016,q.y*.26))*.6+vn(vec2(q.x*.040+7.,q.y*.62))*.4;
+  float thr=.84-.34*uWhite, crest=smoothstep(.04,.34,h/uHmax+.12);
+  float foam=smoothstep(0.,.06,uWhite)*crest*smoothstep(thr,thr+.26,st)*(.45+.55*uAmp);
+  c=mix(c,vec3(.96,.98,1.),clamp(foam,0.,1.)*.72);
   gl_FragColor=vec4(c,1.);}`;
 function mk(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s)); return s; }
 const prog = gl.createProgram();
@@ -117,7 +123,7 @@ function render() {
   f1('uHasB', photos.below ? 1 : 0); f1('uHasS', photos.surf ? 1 : 0); f1('uRaw', rawFlag); f1('uShow', $('showHeight').checked ? 1 : 0);
   f1('uAmp', p.waveAmp / 100); f1('uHor', p.horizon / 100); f1('uLight', p.lightDir / 360); f1('uDepth', p.depth / 100);
   f1('uTint', p.tint / 100); f1('uTurb', p.turbidity / 100); f1('uBal', p.bal / 100); f1('uGlint', p.glint / 100);
-  f1('uCaus', p.caus / 100); f1('uDist', p.dist / 100); f1('uChroma', p.chroma / 100 * .35); f1('uWhite', p.white / 100);
+  f1('uCaus', p.caus / 100); f1('uDist', p.dist / 100); f1('uChroma', p.chroma / 100 * .35); f1('uWhite', p.white / 100); f1('uWDir', (p.whiteDir - 90) * Math.PI / 180);
   gl.uniform3f(loc('uRip'), rip[0], rip[1], rip[2]); f1('uRipT', performance.now() / 1000);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
